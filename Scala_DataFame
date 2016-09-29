@@ -1,0 +1,63 @@
+package com.ctrip.fin
+
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.{SparkConf, SparkContext}
+
+
+/**
+  * Created by zhongxl on 2016/9/28.
+  */
+
+object Csm_1 {
+
+  case class Person(name:String,age:Int)//声明一个类
+  def main(args: Array[String]) {
+
+//    Logger.getRootLogger().setLevel(Level.WARN)
+
+    val conf=new SparkConf().setAppName("Spark Exercise:RF and GBT").setMaster("local")
+    val sc  =new SparkContext(conf)
+    val sqlContext=new SQLContext(sc)
+    //读书CSV数据格式文件，得到dataframe格式数据
+    val df= sqlContext.read
+      .format("com.databricks.spark.csv")
+      .option("header","true")
+      .option("inferSchema","true") //可以读取时间格式
+      .load("D:/project_csm/bigtable_2B_xc.csv")
+
+    //读取TXT文件，得到dataframe格式数据
+    import sqlContext.implicits._
+
+    val people=sc.textFile("D:/spark/examples/src/main/resources/people.txt")
+      .map(_.split(",")).map(p=>Person(p(0),p(1).trim.toInt)).toDF()
+
+    people.dtypes.foreach(println)//显示每一个columns的类型
+    people.columns.foreach(println)// 显示每一个cloumns
+
+    people.foreach(println)
+    val people_2=people.map(t=>(t.getInt(1),t.getAs[Int]("age"))) //处理对象为ROW
+      .map(i =>( i._1/i._2,i._1+i._2 )) //处理对象为tuple
+      .toDF("age2","age3")//这是一个有两个columns的DF
+    people_2.show()
+
+    people.map(t=>"name:"+t(0)+" age:"+t(1)).collect().foreach(println)
+    people.map(t=>"name:"+t.getAs[String]("name")+" age:"+t.getAs("age")).collect().foreach(println)
+    people.map(t=>"name:"+t).collect().foreach(println)
+    people.map(t=>"name:"+ t.getString(0)).collect().foreach(println)
+    people.map(_.getValuesMap[Any](List("name","age"))).collect().foreach(println)//生成map
+
+
+    //处理dataframe数据
+    df.show(5)
+    df.first()
+    print("DF count = " + df.count()+"\n")
+    df.describe().show()//只会显示平均值，最大值，最小值
+    df.groupBy("uid_age").count().show()
+    df.select("uid_age","voi_comment_count", "uid_dealorders", "ord_cancel_trn_order_count",
+      "pro_phone_type", "ord_success_trn_order_count").show()
+    val df_basic=df.select("uid_age","voi_comment_count", "uid_dealorders", "ord_cancel_trn_order_count",
+      "pro_phone_type", "ord_success_trn_order_count")
+    df_basic.show()//生成部分DF
+
+  }
+}
