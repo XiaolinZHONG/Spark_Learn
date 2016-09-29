@@ -1,0 +1,55 @@
+package com.ctrip.fin
+
+import org.apache.spark.mllib.tree.configuration.BoostingStrategy
+import org.apache.spark.mllib.tree.{GradientBoostedTrees, RandomForest}
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.{SparkConf, SparkContext}
+
+object RF_TST {
+  def main(args: Array[String]): Unit = {
+    val conf=new SparkConf().setAppName("Spark Exercise:RF and GBT").setMaster("local")
+    val sc  =new SparkContext(conf)
+    val data=MLUtils.loadLibSVMFile(sc,"D:\\code\\spark_project\\svmlight.txt")//读取修改好的数据文件（libsvm）
+    val splits = data.randomSplit(Array(0.7, 0.3))
+    val (trainingData, testData) = (splits(0), splits(1))
+    // Train a RandomForest model.
+    // Empty categoricalFeaturesInfo indicates all features are continuous.
+    val numClasses = 2 //二分类
+    val categoricalFeaturesInfo = Map[Int, Int]()
+    val numTrees = 20 // 树的数目
+    val featureSubsetStrategy = "auto" // Let the algorithm choose.
+    val impurity = "entropy" //可以选择“gini”
+    val maxDepth = 10
+    val maxBins = 32
+
+    val model = RandomForest.trainClassifier(trainingData, numClasses, categoricalFeaturesInfo,
+      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+
+    // Evaluate model on test instances and compute test error
+    val labelAndPreds = testData.map { point =>
+      val prediction = model.predict(point.features)
+      (point.label, prediction)
+    }
+    val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / testData.count()
+    println("Test Error = " + testErr)
+//    println("Learned classification forest model:\n" + model.toDebugString)
+    // 使用GBT 分类
+    val boostingStrategy = BoostingStrategy.defaultParams("Classification")
+    boostingStrategy.numIterations = 50 //迭代次数
+    boostingStrategy.treeStrategy.numClasses = 2
+    boostingStrategy.treeStrategy.maxDepth = 10
+    // Empty categoricalFeaturesInfo indicates all features are continuous.
+    boostingStrategy.treeStrategy.categoricalFeaturesInfo = Map[Int, Int]()
+
+    val model_2 = GradientBoostedTrees.train(trainingData, boostingStrategy)
+
+    // Evaluate model on test instances and compute test error
+    val labelAndPreds_2 = testData.map { point =>
+      val prediction = model_2.predict(point.features)
+      (point.label, prediction)
+    }
+    val testErr_2 = labelAndPreds_2.filter(r => r._1 != r._2).count.toDouble / testData.count()
+    println("GBT Test Error = " + testErr_2)
+    println("RF Test Error = " + testErr)
+  }
+}
