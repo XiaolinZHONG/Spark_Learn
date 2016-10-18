@@ -108,13 +108,25 @@ object tst2 {
       "acc_pwd_count,acc_paypwd_count,acc_bindmobile_count,voi_complaint_count,voi_complrefund_count,voi_comment_count," +
       "uid_samemobile,uid_haspaypwd,pro_ismarketing,ord_refund_flt_order_count,score"
 
+// 这样生成的数据的格式全部是字符串 String,不利于后面的数据处理。
     val fields=schemaString.split(",").map(fieldName=>StructField(fieldName,StringType,true))
     val schema = StructType(fields)
 
     val noheader=myfile.filter(line=> !line.contains("uid_grade"))
     val myfile2=noheader.map(_.split(",")).map(p=>Row.fromSeq(p.toSeq))
 
+//下面的方法生成的是全部是Double型的数据，便于后面的数据处理。
+
+    val fields_double=schemaString.split(",").map(fieldName=>StructField(fieldName,DoubleType,true))
+    val schema_double = StructType(fields)
+
+    val noheader_double=myfile.filter(line=> !line.contains("uid_grade"))
+
+    val myfile2_double=noheader.map(_.split(",")).map(p=>Row.fromSeq(p.map(x=>x.toDouble).toSeq))
+
     val df=sqlContext.createDataFrame(myfile2,schema)
+    val df_double=sqlContext.createDataFrame(myfile2_double,schema_double)
+
     return df
 
   }
