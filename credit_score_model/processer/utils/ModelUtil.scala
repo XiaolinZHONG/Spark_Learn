@@ -26,7 +26,7 @@ class ModelUtil{
       * 注意：输入的dataframe 必须包含 标签 列
       * */
     val args=df.drop(flag).columns.toList//注意这里
-    val lb_df=df.map(row=>LabeledPoint(row.getAs[Int](flag),
+    val lb_df=df.map(row=>LabeledPoint(row.getAs[Double](flag), //attention
       Vectors.dense(Vectors_style(row,args))))
     lb_df
   }
